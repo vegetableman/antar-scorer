@@ -215,5 +215,40 @@ export default {
         REGEXPS.hasContent.test(node.textContent)
       );
     });
+  },
+
+  getNodeAncestors: (node: HTMLElement, maxDepth: number = 0) => {
+    var i = 0, ancestors = [];
+    while (node.parentNode) {
+      ancestors.push(node.parentNode);
+      if (maxDepth && ++i === maxDepth)
+        break;
+      node = <HTMLElement>node.parentNode;
+    }
+    return ancestors;
+  },
+
+  getClassWeight: (node :HTMLElement) => {
+    let weight = 0;
+
+    // Look for a special classname
+    if (typeof(node.className) === "string" && node.className !== "") {
+      if (REGEXPS.negative.test(node.className))
+        weight -= 25;
+
+      if (REGEXPS.positive.test(node.className))
+        weight += 25;
+    }
+
+    // Look for a special ID
+    if (typeof(node.id) === "string" && node.id !== "") {
+      if (REGEXPS.negative.test(node.id))
+        weight -= 25;
+
+      if (REGEXPS.positive.test(node.id))
+        weight += 25;
+    }
+
+    return weight;
   }
 };
