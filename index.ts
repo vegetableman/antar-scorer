@@ -5,7 +5,8 @@ enum Tag {
 }
 
 const scoreAttribute = "data-antar-score";
-
+const str = String;
+const num = Number;
 const DEFAULT_N_TOP_CANDIDATES = 5;
 
 const initializeScore = (node: HTMLElement): number => {
@@ -140,10 +141,10 @@ const score = (html: string, doc: Document): string => {
             )
               return;
 
-            let dataScore = parseInt(ancestor.dataset[scoreAttribute]);
+            let dataScore = ancestor.dataset[scoreAttribute];
 
             if (typeof dataScore === "undefined") {
-              ancestor.dataset[scoreAttribute] = "" + initializeScore(ancestor);
+              ancestor.dataset[scoreAttribute] = str(initializeScore(ancestor));
               candidates.push(ancestor);
             }
 
@@ -156,8 +157,8 @@ const score = (html: string, doc: Document): string => {
             else if (level === 1) scoreDivider = 2;
             else scoreDivider = level * 3;
 
-            dataScore += contentScore / scoreDivider;
-            ancestor.dataset[scoreAttribute] = "" + dataScore;
+            dataScore = str(num(dataScore) + contentScore / scoreDivider);
+            ancestor.dataset[scoreAttribute] = dataScore;
           }
         );
       }
@@ -173,19 +174,20 @@ const score = (html: string, doc: Document): string => {
       // should have a relatively small link density (5% or less) and be mostly
       // unaffected by this operation.
       let candidateScore =
-        parseInt(candidate.dataset[scoreAttribute]) *
+        num(candidate.dataset[scoreAttribute]) *
         (1 - utils.getLinkDensity(candidate));
 
       candidate.dataset[scoreAttribute] = candidateScore;
 
       for (let t = 0; t < DEFAULT_N_TOP_CANDIDATES; t++) {
         let aTopCandidate = topCandidates[t];
-        let aContentScore = parseInt(aTopCandidate.dataset[scoreAttribute]);
+        let aContentScore = num(aTopCandidate.dataset[scoreAttribute]);
 
         if (!aTopCandidate || candidateScore > aContentScore) {
           topCandidates.splice(t, 0, candidate);
-          if (topCandidates.length > DEFAULT_N_TOP_CANDIDATES)
+          if (topCandidates.length > DEFAULT_N_TOP_CANDIDATES) {
             topCandidates.pop();
+          }
           break;
         }
       }
@@ -205,11 +207,9 @@ const score = (html: string, doc: Document): string => {
       // so we even include text directly in the body:
       var kids = page.childNodes;
       while (kids.length) {
-        this.log("Moving child out:", kids[0]);
+        // this.log("Moving child out:", kids[0]);
         topCandidate.appendChild(kids[0]);
       }
-
-      page.appendChild(topCandidate);
 
       topCandidate.dataset[scoreAttribute] = initializeScore(topCandidate);
     } else if (topCandidate) {
@@ -223,6 +223,31 @@ const score = (html: string, doc: Document): string => {
           alternativeCandidateAncestors.push(
             utils.getNodeAncestors(topCandidates[i])
           );
+        }
+      }
+
+      const MINIMUM_TOPCANDIDATES = 3;
+      if (alternativeCandidateAncestors.length >= MINIMUM_TOPCANDIDATES) {
+        parentOfTopCandidate = topCandidate.parentNode;
+        while (parentOfTopCandidate.tagName !== "BODY") {
+          let listsContainingThisAncestor = 0;
+          for (
+            let ancestorIndex = 0;
+            ancestorIndex < alternativeCandidateAncestors.length &&
+            listsContainingThisAncestor < MINIMUM_TOPCANDIDATES;
+            ancestorIndex++
+          ) {
+            listsContainingThisAncestor += num(
+              alternativeCandidateAncestors[ancestorIndex].includes(
+                parentOfTopCandidate
+              )
+            );
+          }
+          if (listsContainingThisAncestor >= MINIMUM_TOPCANDIDATES) {
+            topCandidate = parentOfTopCandidate;
+            break;
+          }
+          parentOfTopCandidate = parentOfTopCandidate.parentNode;
         }
       }
     }
