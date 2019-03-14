@@ -134,6 +134,12 @@ export default {
     );
   },
 
+  isUnlikelyTag:(node: HTMLElement): boolean => {
+    return node.tagName === "BR" ||
+    node.tagName === "SCRIPT" ||
+    node.tagName === "STYLE"
+  },
+
   isWithoutContentCandidate: (node: HTMLElement): boolean => {
     return (
       (node.tagName === "DIV" ||

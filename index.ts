@@ -67,11 +67,11 @@ const score = (html: string, doc: Document): string => {
     let node = doc.documentElement;
 
     while (node) {
-      let matchString = node.className + " " + node.id;
-
-      if (!utils.isProbablyVisible(node)) {
+      if (!utils.isProbablyVisible(node) || utils.isUnlikelyTag(node)) {
         continue;
       }
+
+      let matchString = node.className + " " + node.id;
 
       if (!articleByLine) {
         articleByLine = utils.checkByline(node, matchString);
@@ -216,8 +216,8 @@ const score = (html: string, doc: Document): string => {
       let alternativeCandidateAncestors = [];
       for (let i = 1; i < topCandidates.length; i++) {
         if (
-          topCandidates[i].dataset[scoreAttribute] /
-            topCandidate.dataset[scoreAttribute] >=
+          num(topCandidates[i].dataset[scoreAttribute]) /
+            num(topCandidate.dataset[scoreAttribute]) >=
           0.75
         ) {
           alternativeCandidateAncestors.push(
