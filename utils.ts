@@ -49,6 +49,15 @@ const REGEXPS = {
 
 const DIV_TO_P_ELEMS = [ "A", "BLOCKQUOTE", "DL", "DIV", "IMG", "OL", "P", "PRE", "TABLE", "UL", "SELECT" ]
 
+const PHRASING_ELEMS = [
+  // "CANVAS", "IFRAME", "SVG", "VIDEO",
+  "ABBR", "AUDIO", "B", "BDO", "BR", "BUTTON", "CITE", "CODE", "DATA",
+  "DATALIST", "DFN", "EM", "EMBED", "I", "IMG", "INPUT", "KBD", "LABEL",
+  "MARK", "MATH", "METER", "NOSCRIPT", "OBJECT", "OUTPUT", "PROGRESS", "Q",
+  "RUBY", "SAMP", "SCRIPT", "SELECT", "SMALL", "SPAN", "STRONG", "SUB",
+  "SUP", "TEXTAREA", "TIME", "VAR", "WBR"
+]
+
 export default {
   isProbablyVisible: (node: HTMLElement): boolean => {
     return (
@@ -66,9 +75,11 @@ export default {
   },
 
   checkByline: (node: HTMLElement, matchString: string): boolean => {
+    let rel: string;
+    let itemprop: string;
     if (node.getAttribute !== undefined) {
-      var rel = node.getAttribute("rel");
-      var itemprop = node.getAttribute("itemprop");
+      rel = node.getAttribute("rel");
+      itemprop = node.getAttribute("itemprop");
     }
 
     if (
@@ -99,7 +110,7 @@ export default {
   ): boolean => {
     maxDepth = maxDepth || 3;
     tagName = tagName.toUpperCase();
-    var depth = 0;
+    let depth = 0;
     while (node.parentNode) {
       if (maxDepth > 0 && depth > maxDepth) return false;
       if (
@@ -183,6 +194,31 @@ export default {
     return linkLength / textLength;
   },
 
+  setScore: (node: HTMLElement, value: string | number): void => {
+    node.dataset["data-antar-score"] = String(value);
+  },
+
+  getScore: (node: HTMLElement): number => {
+    if (!node) return;
+    const score = node.dataset["data-antar-score"]
+    return score ? Number(score): undefined;
+  },
+
+  everyNode: (nodeList: HTMLAllCollection, fn: Function): boolean => {
+    return Array.prototype.every.call(nodeList, fn, this);
+  },
+
+  isWhitespace: (node: HTMLElement): boolean => {
+    return (node.nodeType === this.TEXT_NODE && node.textContent.trim().length === 0) ||
+           (node.nodeType === this.ELEMENT_NODE && node.tagName === "BR");
+  },
+
+  isPhrasingContent: (node: HTMLElement) => {
+    return node.nodeType === NODE_TYPE.TEXT_NODE || PHRASING_ELEMS.indexOf(node.tagName) !== -1 ||
+      ((node.tagName === "A" || node.tagName === "DEL" || node.tagName === "INS") &&
+        this.everyNode(node.childNodes, this.isPhrasingContent));
+  },
+
   hasChildBlockElement:  (element: HTMLElement): boolean => {
     return this.someNode(element.childNodes, (node: HTMLElement) => {
       return DIV_TO_P_ELEMS.indexOf(node.tagName) !== -1 ||
@@ -224,7 +260,7 @@ export default {
   },
 
   getNodeAncestors: (node: HTMLElement, maxDepth: number = 0) => {
-    var i = 0, ancestors = [];
+    let i = 0, ancestors = [];
     while (node.parentNode) {
       ancestors.push(node.parentNode);
       if (maxDepth && ++i === maxDepth)

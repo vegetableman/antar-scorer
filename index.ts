@@ -4,9 +4,17 @@ enum Tag {
   DIV = "div"
 }
 
-const scoreAttribute = "data-antar-score";
-const str = String;
-const num = Number;
+enum FLAGS {
+  FLAG_STRIP_UNLIKELYS = 0x1,
+  FLAG_WEIGHT_CLASSES = 0x2,
+  FLAG_CLEAN_CONDITIONALLY = 0x4
+}
+
+enum SCORES {
+  EXEMPT_NODE = -9999,
+  PHRASING_NODE = 1000
+}
+
 const DEFAULT_N_TOP_CANDIDATES = 5;
 
 const initializeScore = (node: HTMLElement): number => {
@@ -67,7 +75,13 @@ const score = (html: string, doc: Document): string => {
     let node = doc.documentElement;
 
     while (node) {
+      if (utils.getScore(node) === SCORES.EXEMPT_NODE) {
+        return;
+      }
+
       if (!utils.isProbablyVisible(node) || utils.isUnlikelyTag(node)) {
+        utils.setScore(node, SCORES.EXEMPT_NODE);
+        node = utils.getNextNode(node);
         continue;
       }
 
@@ -75,14 +89,22 @@ const score = (html: string, doc: Document): string => {
 
       if (!articleByLine) {
         articleByLine = utils.checkByline(node, matchString);
-        if (articleByLine) continue;
+        if (articleByLine) {
+          utils.setScore(node, SCORES.EXEMPT_NODE);
+          node = utils.getNextNode(node);
+          continue;
+        }
       }
 
       if (!utils.isUnlikelyCandidate(node, matchString)) {
+        utils.setScore(node, SCORES.EXEMPT_NODE);
+        node = utils.getNextNode(node);
         continue;
       }
 
       if (!utils.isWithoutContentCandidate(node)) {
+        utils.setScore(node, SCORES.EXEMPT_NODE);
+        node = utils.getNextNode(node);
         continue;
       }
 
@@ -91,6 +113,24 @@ const score = (html: string, doc: Document): string => {
       }
 
       if (node.tagName === Tag.DIV) {
+        let p = null;
+        let childNode = node.firstChild;
+        while (childNode) {
+          if (utils.isPhrasingContent(<HTMLElement>childNode)) {
+            if (p !== null) {
+              utils.setScore(<HTMLElement>childNode, SCORES.PHRASING_NODE);
+              elementsToScore.push(childNode);
+            } else if (!utils.isWhitespace(<HTMLElement>childNode)) {
+              p = {};
+              utils.setScore(<HTMLElement>childNode, SCORES.PHRASING_NODE);
+              elementsToScore.push(childNode);
+            }
+          } else if (p !== null) {
+            p = null;
+          }
+          childNode = <HTMLElement>childNode.nextSibling;
+        }
+
         // Sites like http://mobile.slate.com encloses each paragraph with a DIV
         // element. DIVs with only a P element inside and no text content can be
         // safely converted into plain P elements to avoid confusing the scoring
@@ -107,7 +147,7 @@ const score = (html: string, doc: Document): string => {
       node = utils.getNextNode(node);
     }
 
-    var candidates = [];
+    let candidates = [];
     utils.forEachNode(
       elementsToScore,
       (elementToScore: HTMLElement): void => {
@@ -141,10 +181,10 @@ const score = (html: string, doc: Document): string => {
             )
               return;
 
-            let dataScore = ancestor.dataset[scoreAttribute];
+            let dataScore = utils.getScore(ancestor);
 
             if (typeof dataScore === "undefined") {
-              ancestor.dataset[scoreAttribute] = str(initializeScore(ancestor));
+              utils.setScore(ancestor, initializeScore(ancestor));
               candidates.push(ancestor);
             }
 
@@ -157,8 +197,8 @@ const score = (html: string, doc: Document): string => {
             else if (level === 1) scoreDivider = 2;
             else scoreDivider = level * 3;
 
-            dataScore = str(num(dataScore) + contentScore / scoreDivider);
-            ancestor.dataset[scoreAttribute] = dataScore;
+            dataScore = dataScore + contentScore / scoreDivider;
+            utils.setScore(ancestor, dataScore);
           }
         );
       }
@@ -174,14 +214,12 @@ const score = (html: string, doc: Document): string => {
       // should have a relatively small link density (5% or less) and be mostly
       // unaffected by this operation.
       let candidateScore =
-        num(candidate.dataset[scoreAttribute]) *
-        (1 - utils.getLinkDensity(candidate));
-
-      candidate.dataset[scoreAttribute] = candidateScore;
+        utils.getScore(candidate) * (1 - utils.getLinkDensity(candidate));
+      utils.setScore(candidate, candidateScore);
 
       for (let t = 0; t < DEFAULT_N_TOP_CANDIDATES; t++) {
         let aTopCandidate = topCandidates[t];
-        let aContentScore = num(aTopCandidate.dataset[scoreAttribute]);
+        let aContentScore = utils.getScore(aTopCandidate);
 
         if (!aTopCandidate || candidateScore > aContentScore) {
           topCandidates.splice(t, 0, candidate);
@@ -205,19 +243,18 @@ const score = (html: string, doc: Document): string => {
       neededToCreateTopCandidate = true;
       // Move everything (not just elements, also text nodes etc.) into the container
       // so we even include text directly in the body:
-      var kids = page.childNodes;
+      let kids = page.childNodes;
       while (kids.length) {
         // this.log("Moving child out:", kids[0]);
         topCandidate.appendChild(kids[0]);
       }
 
-      topCandidate.dataset[scoreAttribute] = initializeScore(topCandidate);
+      utils.setScore(topCandidate, initializeScore(topCandidate));
     } else if (topCandidate) {
       let alternativeCandidateAncestors = [];
       for (let i = 1; i < topCandidates.length; i++) {
         if (
-          num(topCandidates[i].dataset[scoreAttribute]) /
-            num(topCandidate.dataset[scoreAttribute]) >=
+          utils.getScore(topCandidates[i]) / utils.getScore(topCandidate) >=
           0.75
         ) {
           alternativeCandidateAncestors.push(
@@ -237,11 +274,12 @@ const score = (html: string, doc: Document): string => {
             listsContainingThisAncestor < MINIMUM_TOPCANDIDATES;
             ancestorIndex++
           ) {
-            listsContainingThisAncestor += num(
+            listsContainingThisAncestor += Number(
               alternativeCandidateAncestors[ancestorIndex].includes(
                 parentOfTopCandidate
               )
             );
+            utils.getScore(alternativeCandidateAncestors[ancestorIndex]);
           }
           if (listsContainingThisAncestor >= MINIMUM_TOPCANDIDATES) {
             topCandidate = parentOfTopCandidate;
@@ -249,6 +287,140 @@ const score = (html: string, doc: Document): string => {
           }
           parentOfTopCandidate = parentOfTopCandidate.parentNode;
         }
+      }
+
+      if (!utils.getScore(topCandidate)) {
+        utils.setScore(node, initializeScore(topCandidate));
+      }
+
+      // Because of our bonus system, parents of candidates might have scores
+      // themselves. They get half of the node. There won't be nodes with higher
+      // scores than our topCandidate, but if we see the score going *up* in the first
+      // few steps up the tree, that's a decent sign that there might be more content
+      // lurking in other places that we want to unify in. The sibling stuff
+      // below does some of that - but only if we've looked high enough up the DOM
+      // tree.
+      parentOfTopCandidate = topCandidate.parentNode;
+      let lastScore = utils.getScore(topCandidate);
+      let scoreThreshold = lastScore / 3;
+      while (parentOfTopCandidate.tagName !== "BODY") {
+        if (!utils.getScore(parentOfTopCandidate)) {
+          parentOfTopCandidate = parentOfTopCandidate.parentNode;
+          continue;
+        }
+        let parentScore = utils.getScore(parentOfTopCandidate);
+        if (parentScore < scoreThreshold) break;
+        if (parentScore > lastScore) {
+          // Alright! We found a better parent to use.
+          topCandidate = parentOfTopCandidate;
+          break;
+        }
+        lastScore = parentScore;
+        parentOfTopCandidate = parentOfTopCandidate.parentNode;
+      }
+
+      // If the top candidate is the only child, use parent instead. This will help sibling
+      // joining logic when adjacent content is actually located in parent's sibling node.
+      parentOfTopCandidate = topCandidate.parentNode;
+      while (
+        parentOfTopCandidate.tagName != "BODY" &&
+        parentOfTopCandidate.children.length == 1
+      ) {
+        topCandidate = parentOfTopCandidate;
+        parentOfTopCandidate = topCandidate.parentNode;
+      }
+      if (!utils.getScore(topCandidate)) {
+        utils.setScore(topCandidate, initializeScore(topCandidate));
+      }
+    }
+
+    // Now that we have the top candidate, look through its siblings for content
+    // that might also be related. Things like preambles, content split by ads
+    // that we removed, etc.
+    var articleContent = doc.createElement("DIV");
+    // if (isPaging)
+    //   articleContent.id = "readability-content";
+
+    let siblingScoreThreshold = Math.max(
+      10,
+      utils.getScore(topCandidate) * 0.2
+    );
+    // Keep potential top candidate's parent node to try to get text direction of it later.
+    parentOfTopCandidate = topCandidate.parentNode;
+    let siblings = parentOfTopCandidate.children;
+
+    for (var s = 0, sl = siblings.length; s < sl; s++) {
+      let sibling = siblings[s];
+      let append = false;
+
+      console.log(
+        "Looking at sibling node:",
+        sibling,
+        sibling.readability ? "with score " + utils.getScore(topCandidate) : ""
+      );
+      console.log(
+        "Sibling has score",
+        sibling.readability ? utils.getScore(topCandidate) : "Unknown"
+      );
+
+      if (sibling === topCandidate) {
+        append = true;
+        utils.setScore(sibling, utils.getScore(topCandidate));
+      } else {
+        let contentBonus = 0;
+
+        // Give a bonus if sibling nodes and top candidates have the example same classname
+        if (
+          sibling.className === topCandidate.className &&
+          topCandidate.className !== ""
+        ) {
+          contentBonus += utils.getScore(topCandidate) * 0.2;
+        }
+
+        if (
+          utils.getScore(sibling) &&
+          utils.getScore(sibling) + contentBonus >= siblingScoreThreshold
+        ) {
+          append = true;
+          utils.setScore(sibling, utils.getScore(sibling) + contentBonus);
+        } else if (sibling.nodeName === "P") {
+          let linkDensity = utils.getLinkDensity(sibling);
+          let nodeContent = utils.getInnerText(sibling);
+          let nodeLength = nodeContent.length;
+
+          if (nodeLength > 80 && linkDensity < 0.25) {
+            append = true;
+            utils.setScore(sibling, nodeLength);
+          } else if (
+            nodeLength < 80 &&
+            nodeLength > 0 &&
+            linkDensity === 0 &&
+            nodeContent.search(/\.( |$)/) !== -1
+          ) {
+            append = true;
+            utils.setScore(sibling, nodeLength);
+          }
+        }
+      }
+
+      if (append) {
+        console.log("Appending node:", sibling);
+
+        if (this.ALTER_TO_DIV_EXCEPTIONS.indexOf(sibling.nodeName) === -1) {
+          // We have a node that isn't a common block level element, like a form or td tag.
+          // Turn it into a div so it doesn't get filtered out later by accident.
+          this.log("Altering sibling:", sibling, "to div.");
+
+          sibling = this._setNodeTag(sibling, "DIV");
+        }
+
+        articleContent.appendChild(sibling);
+        // siblings is a reference to the children array, and
+        // sibling is removed from the array when we call appendChild().
+        // As a result, we must revisit this index since the nodes
+        // have been shifted.
+        s -= 1;
+        sl -= 1;
       }
     }
   }
