@@ -52,8 +52,7 @@ const score = (html: string, doc: Document): string => {
   }
 
   if (!isProbablyReaderable(doc)) {
-    console.log("Document is not readable");
-    return;
+    throw new Error("Document is not readerable");
   }
 
   let articleByLine = false;
