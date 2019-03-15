@@ -59,7 +59,6 @@ const score = (html: string, doc: Document): string => {
   let articleByLine = false;
   let attemptHandler = new FlagAttempts();
   let page = doc.body;
-  let pageCacheHtml = page.innerHTML;
 
   const initializeScore = (node: HTMLElement): number => {
     let score = 0;
