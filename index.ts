@@ -4,56 +4,40 @@ enum Tag {
   DIV = "div"
 }
 
-enum FLAGS {
-  FLAG_STRIP_UNLIKELYS = 0x1,
-  FLAG_WEIGHT_CLASSES = 0x2,
-  FLAG_CLEAN_CONDITIONALLY = 0x4
-}
-
 enum SCORES {
   EXEMPT_NODE = -9999,
   PHRASING_NODE = 1000
 }
 
-const DEFAULT_N_TOP_CANDIDATES = 5;
+enum FLags {
+  FLAG_STRIP_UNLIKELYS = 0x1,
+  FLAG_WEIGHT_CLASSES = 0x2,
+  FLAG_CLEAN_CONDITIONALLY = 0x4
+}
 
-const initializeScore = (node: HTMLElement): number => {
-  let score = 0;
-  switch (node.tagName) {
-    case "DIV":
-      score += 5;
-      break;
+class FlagAttempts {
+  FLAG_STRIP_UNLIKELYS: number = FLags.FLAG_STRIP_UNLIKELYS;
+  FLAG_WEIGHT_CLASSES: number = FLags.FLAG_WEIGHT_CLASSES;
+  FLAG_CLEAN_CONDITIONALLY: number = FLags.FLAG_CLEAN_CONDITIONALLY;
 
-    case "PRE":
-    case "TD":
-    case "BLOCKQUOTE":
-      score += 3;
-      break;
+  attempts: Array<{ articleContent: HTMLElement; textLength: number }> = [];
 
-    case "ADDRESS":
-    case "OL":
-    case "UL":
-    case "DL":
-    case "DD":
-    case "DT":
-    case "LI":
-    case "FORM":
-      score -= 3;
-      break;
+  flags =
+    this.FLAG_STRIP_UNLIKELYS |
+    this.FLAG_WEIGHT_CLASSES |
+    this.FLAG_CLEAN_CONDITIONALLY;
 
-    case "H1":
-    case "H2":
-    case "H3":
-    case "H4":
-    case "H5":
-    case "H6":
-    case "TH":
-      score -= 5;
-      break;
+  removeFlag(flag: number) {
+    this.flags = this.flags & ~flag;
   }
-  score += utils.getClassWeight(node);
-  return score;
-};
+
+  isFlagActive(flag: number): boolean {
+    return (this.flags & flag) > 0;
+  }
+}
+
+const DEFAULT_N_TOP_CANDIDATES = 5;
+const DEFAULT_CHAR_THRESHOLD = 500;
 
 const score = (html: string, doc: Document): string => {
   // if no doc, default to the document.cloneNode
@@ -66,15 +50,60 @@ const score = (html: string, doc: Document): string => {
     })();
   }
 
-  const page = doc.body;
-  const pageCacheHtml = page.innerHTML;
   let articleByLine = false;
+  let attemptHandler = new FlagAttempts();
+  let page = doc.body;
+  let pageCacheHtml = page.innerHTML;
+
+  const initializeScore = (node: HTMLElement): number => {
+    let score = 0;
+    switch (node.tagName) {
+      case "DIV":
+        score += 5;
+        break;
+
+      case "PRE":
+      case "TD":
+      case "BLOCKQUOTE":
+        score += 3;
+        break;
+
+      case "ADDRESS":
+      case "OL":
+      case "UL":
+      case "DL":
+      case "DD":
+      case "DT":
+      case "LI":
+      case "FORM":
+        score -= 3;
+        break;
+
+      case "H1":
+      case "H2":
+      case "H3":
+      case "H4":
+      case "H5":
+      case "H6":
+      case "TH":
+        score -= 5;
+        break;
+    }
+    if (attemptHandler.isFlagActive(FLags.FLAG_WEIGHT_CLASSES)) {
+      score += utils.getClassWeight(node);
+    }
+    return score;
+  };
 
   while (true) {
     let elementsToScore = [];
     let node = doc.documentElement;
 
     while (node) {
+      let stripUnlikelyCandidates = attemptHandler.isFlagActive(
+        FLags.FLAG_STRIP_UNLIKELYS
+      );
+
       if (utils.getScore(node) === SCORES.EXEMPT_NODE) {
         return;
       }
@@ -102,7 +131,7 @@ const score = (html: string, doc: Document): string => {
         continue;
       }
 
-      if (!utils.isWithoutContentCandidate(node)) {
+      if (stripUnlikelyCandidates && !utils.isWithoutContentCandidate(node)) {
         utils.setScore(node, SCORES.EXEMPT_NODE);
         node = utils.getNextNode(node);
         continue;
@@ -337,9 +366,7 @@ const score = (html: string, doc: Document): string => {
     // Now that we have the top candidate, look through its siblings for content
     // that might also be related. Things like preambles, content split by ads
     // that we removed, etc.
-    var articleContent = doc.createElement("DIV");
-    // if (isPaging)
-    //   articleContent.id = "readability-content";
+    var articleContent = <HTMLElement>doc.createElement(Tag.DIV);
 
     let siblingScoreThreshold = Math.max(
       10,
@@ -405,15 +432,6 @@ const score = (html: string, doc: Document): string => {
 
       if (append) {
         console.log("Appending node:", sibling);
-
-        if (this.ALTER_TO_DIV_EXCEPTIONS.indexOf(sibling.nodeName) === -1) {
-          // We have a node that isn't a common block level element, like a form or td tag.
-          // Turn it into a div so it doesn't get filtered out later by accident.
-          this.log("Altering sibling:", sibling, "to div.");
-
-          sibling = this._setNodeTag(sibling, "DIV");
-        }
-
         articleContent.appendChild(sibling);
         // siblings is a reference to the children array, and
         // sibling is removed from the array when we call appendChild().
@@ -421,6 +439,49 @@ const score = (html: string, doc: Document): string => {
         // have been shifted.
         s -= 1;
         sl -= 1;
+      }
+    }
+
+    if (!neededToCreateTopCandidate) {
+      let div = doc.createElement(Tag.DIV);
+      let children = articleContent.childNodes;
+      while (children.length) {
+        div.appendChild(children[0]);
+      }
+      articleContent.appendChild(div);
+    }
+
+    let parseSuccessful = true;
+    const textLength = utils.getInnerText(articleContent, true).length;
+
+    if (textLength < DEFAULT_CHAR_THRESHOLD) {
+      parseSuccessful = false;
+      page.innerHTML = pageCacheHtml;
+
+      attemptHandler.attempts.push({
+        articleContent,
+        textLength
+      });
+
+      if (attemptHandler.isFlagActive(FLags.FLAG_STRIP_UNLIKELYS)) {
+        attemptHandler.removeFlag(FLags.FLAG_STRIP_UNLIKELYS);
+      } else if (attemptHandler.isFlagActive(this.FLAG_WEIGHT_CLASSES)) {
+        attemptHandler.removeFlag(this.FLAG_WEIGHT_CLASSES);
+      } else if (attemptHandler.isFlagActive(this.FLAG_CLEAN_CONDITIONALLY)) {
+        attemptHandler.removeFlag(this.FLAG_CLEAN_CONDITIONALLY);
+      } else {
+        // No luck after removing flags, just return the longest text we found during the different loops
+        attemptHandler.attempts.sort((a, b) => {
+          return b.textLength - a.textLength;
+        });
+
+        // But first check if we actually have something
+        if (!attemptHandler.attempts[0].textLength) {
+          return null;
+        }
+
+        articleContent = attemptHandler.attempts[0].articleContent;
+        parseSuccessful = true;
       }
     }
   }
