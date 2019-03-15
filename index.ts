@@ -464,10 +464,10 @@ const score = (html: string, doc: Document): string => {
 
       if (attemptHandler.isFlagActive(FLags.FLAG_STRIP_UNLIKELYS)) {
         attemptHandler.removeFlag(FLags.FLAG_STRIP_UNLIKELYS);
-      } else if (attemptHandler.isFlagActive(this.FLAG_WEIGHT_CLASSES)) {
-        attemptHandler.removeFlag(this.FLAG_WEIGHT_CLASSES);
-      } else if (attemptHandler.isFlagActive(this.FLAG_CLEAN_CONDITIONALLY)) {
-        attemptHandler.removeFlag(this.FLAG_CLEAN_CONDITIONALLY);
+      } else if (attemptHandler.isFlagActive(FLags.FLAG_WEIGHT_CLASSES)) {
+        attemptHandler.removeFlag(FLags.FLAG_WEIGHT_CLASSES);
+      } else if (attemptHandler.isFlagActive(FLags.FLAG_CLEAN_CONDITIONALLY)) {
+        attemptHandler.removeFlag(FLags.FLAG_CLEAN_CONDITIONALLY);
       } else {
         // No luck after removing flags, just return the longest text we found during the different loops
         attemptHandler.attempts.sort((a, b) => {
