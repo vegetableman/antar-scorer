@@ -52,6 +52,7 @@ const score = (html: string, doc: Document): string => {
   }
 
   if (!isProbablyReaderable(doc)) {
+    console.log("Document is not readable");
     return;
   }
 
@@ -110,7 +111,8 @@ const score = (html: string, doc: Document): string => {
       );
 
       if (utils.getScore(node) === SCORES.EXEMPT_NODE) {
-        return;
+        node = utils.getNextNode(node);
+        continue;
       }
 
       if (!utils.isProbablyVisible(node) || utils.isUnlikelyTag(node)) {
@@ -267,7 +269,7 @@ const score = (html: string, doc: Document): string => {
 
     let topCandidate = topCandidates[0] || null;
     let neededToCreateTopCandidate = false;
-    let parentOfTopCandidate;
+    let parentOfTopCandidate: HTMLElement;
 
     // If we still have no top candidate, just use the body as a last resort.
     // We also have to copy the body node so it is something we can modify.
@@ -319,7 +321,7 @@ const score = (html: string, doc: Document): string => {
             topCandidate = parentOfTopCandidate;
             break;
           }
-          parentOfTopCandidate = parentOfTopCandidate.parentNode;
+          parentOfTopCandidate = <HTMLElement>parentOfTopCandidate.parentNode;
         }
       }
 
@@ -339,7 +341,7 @@ const score = (html: string, doc: Document): string => {
       let scoreThreshold = lastScore / 3;
       while (parentOfTopCandidate.tagName !== "BODY") {
         if (!utils.getScore(parentOfTopCandidate)) {
-          parentOfTopCandidate = parentOfTopCandidate.parentNode;
+          parentOfTopCandidate = <HTMLElement>parentOfTopCandidate.parentNode;
           continue;
         }
         let parentScore = utils.getScore(parentOfTopCandidate);
@@ -350,7 +352,7 @@ const score = (html: string, doc: Document): string => {
           break;
         }
         lastScore = parentScore;
-        parentOfTopCandidate = parentOfTopCandidate.parentNode;
+        parentOfTopCandidate = <HTMLElement>parentOfTopCandidate.parentNode;
       }
 
       // If the top candidate is the only child, use parent instead. This will help sibling
@@ -382,17 +384,19 @@ const score = (html: string, doc: Document): string => {
     let siblings = parentOfTopCandidate.children;
 
     for (var s = 0, sl = siblings.length; s < sl; s++) {
-      let sibling = siblings[s];
+      let sibling = <HTMLElement>siblings[s];
       let append = false;
 
       console.log(
         "Looking at sibling node:",
         sibling,
-        sibling.readability ? "with score " + utils.getScore(topCandidate) : ""
+        utils.getScore(sibling)
+          ? "with score " + utils.getScore(topCandidate)
+          : ""
       );
       console.log(
         "Sibling has score",
-        sibling.readability ? utils.getScore(topCandidate) : "Unknown"
+        utils.getScore(sibling) ? utils.getScore(topCandidate) : "Unknown"
       );
 
       if (sibling === topCandidate) {
@@ -447,21 +451,11 @@ const score = (html: string, doc: Document): string => {
       }
     }
 
-    if (!neededToCreateTopCandidate) {
-      let div = doc.createElement(Tag.DIV);
-      let children = articleContent.childNodes;
-      while (children.length) {
-        div.appendChild(children[0]);
-      }
-      articleContent.appendChild(div);
-    }
-
     let parseSuccessful = true;
     const textLength = utils.getInnerText(articleContent, true).length;
 
     if (textLength < DEFAULT_CHAR_THRESHOLD) {
       parseSuccessful = false;
-      page.innerHTML = pageCacheHtml;
 
       attemptHandler.attempts.push({
         articleContent,

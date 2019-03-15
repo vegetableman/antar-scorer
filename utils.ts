@@ -170,7 +170,7 @@ export default {
     return DEFAULT_TAGS_TO_SCORE.indexOf(node.tagName) !== -1;
   },
 
-  getInnerText: (node: HTMLElement, normalizeSpaces:boolean = false): string => {
+  getInnerText: (node: HTMLElement, normalizeSpaces?:boolean): string => {
     normalizeSpaces = (typeof normalizeSpaces === "undefined") ? true : normalizeSpaces;
     let textContent = node.textContent.trim();
 
@@ -270,7 +270,7 @@ export default {
     return ancestors;
   },
 
-  getClassWeight: (node :HTMLElement) => {
+  getClassWeight: (node: HTMLElement) => {
     let weight = 0;
 
     // Look for a special classname
