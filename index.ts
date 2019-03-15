@@ -1,4 +1,5 @@
 import utils from "./utils";
+import isProbablyReaderable from "./readerable";
 
 enum Tag {
   DIV = "div"
@@ -48,6 +49,10 @@ const score = (html: string, doc: Document): string => {
       const fragment = domify(html, doc);
       doc.body.appendChild(fragment);
     })();
+  }
+
+  if (!isProbablyReaderable(doc)) {
+    return;
   }
 
   let articleByLine = false;
@@ -366,7 +371,7 @@ const score = (html: string, doc: Document): string => {
     // Now that we have the top candidate, look through its siblings for content
     // that might also be related. Things like preambles, content split by ads
     // that we removed, etc.
-    var articleContent = <HTMLElement>doc.createElement(Tag.DIV);
+    let articleContent = <HTMLElement>doc.createElement(Tag.DIV);
 
     let siblingScoreThreshold = Math.max(
       10,
@@ -484,9 +489,11 @@ const score = (html: string, doc: Document): string => {
         parseSuccessful = true;
       }
     }
-  }
 
-  return html;
+    if (parseSuccessful) {
+      return articleContent.innerHTML;
+    }
+  }
 };
 
 export default { score };
