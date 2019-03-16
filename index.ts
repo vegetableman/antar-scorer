@@ -218,7 +218,8 @@ const score = (html: string, doc: Document): string => {
             let dataScore = utils.getScore(ancestor);
 
             if (typeof dataScore === "undefined") {
-              utils.setScore(ancestor, initializeScore(ancestor));
+              dataScore = initializeScore(ancestor);
+              utils.setScore(ancestor, dataScore);
               candidates.push(ancestor);
             }
 
@@ -383,6 +384,10 @@ const score = (html: string, doc: Document): string => {
 
     for (var s = 0, sl = siblings.length; s < sl; s++) {
       let sibling = <HTMLElement>siblings[s];
+      if (utils.getScore(sibling) === SCORES.EXEMPT_NODE) {
+        continue;
+      }
+
       let append = false;
 
       console.log(
@@ -399,7 +404,6 @@ const score = (html: string, doc: Document): string => {
 
       if (sibling === topCandidate) {
         append = true;
-        utils.setScore(sibling, utils.getScore(topCandidate));
       } else {
         let contentBonus = 0;
 
@@ -444,8 +448,8 @@ const score = (html: string, doc: Document): string => {
         // sibling is removed from the array when we call appendChild().
         // As a result, we must revisit this index since the nodes
         // have been shifted.
-        s -= 1;
-        sl -= 1;
+        // s -= 1;
+        // sl -= 1;
       }
     }
 
