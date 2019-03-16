@@ -24,6 +24,8 @@ enum NODE_TYPE {
   TEXT_NODE = 3
 }
 
+const DATA_ATTR = 'antarScore';
+
 const DEFAULT_TAGS_TO_SCORE = "section,h2,h3,h4,h5,h6,p,td,pre"
   .toUpperCase()
   .split(",");
@@ -59,14 +61,14 @@ const PHRASING_ELEMS = [
 ]
 
 export default {
-  isProbablyVisible: (node: HTMLElement): boolean => {
+  isProbablyVisible: function(node: HTMLElement): boolean {
     return (
       (!node.style || node.style.display != "none") &&
       !node.hasAttribute("hidden")
     );
   },
 
-  isValidByline: (byline: string | any): boolean => {
+  isValidByline: function(byline: string | any): boolean {
     if (typeof byline == "string" || byline instanceof String) {
       byline = byline.trim();
       return byline.length > 0 && byline.length < 100;
@@ -74,7 +76,7 @@ export default {
     return false;
   },
 
-  checkByline: (node: HTMLElement, matchString: string): boolean => {
+  checkByline: function(node: HTMLElement, matchString: string): boolean {
     let rel: string;
     let itemprop: string;
     if (node.getAttribute !== undefined) {
@@ -94,20 +96,20 @@ export default {
     return false;
   },
 
-  someNode: (nodeList: Array<HTMLElement>, fn: Function) => {
+  someNode: function(nodeList: Array<HTMLElement>, fn: Function) {
     return Array.prototype.some.call(nodeList, fn, this);
   },
 
-  forEachNode: (nodeList: Array<HTMLElement>, fn: Function) => {
+  forEachNode: function(nodeList: Array<HTMLElement>, fn: Function) {
     Array.prototype.forEach.call(nodeList, fn, this);
   },
 
-  hasAncestorTag: (
+  hasAncestorTag: function(
     node: HTMLElement,
     tagName: string,
     maxDepth: number,
     filterFn: Function
-  ): boolean => {
+  ): boolean {
     maxDepth = maxDepth || 3;
     tagName = tagName.toUpperCase();
     let depth = 0;
@@ -124,7 +126,7 @@ export default {
     return false;
   },
 
-  isUnlikelyCandidate: (node: HTMLElement, matchString: string): boolean => {
+  isUnlikelyCandidate: function(node: HTMLElement, matchString: string): boolean {
     return (
       REGEXPS.unlikelyCandidates.test(matchString) &&
       !REGEXPS.okMaybeItsACandidate.test(matchString) &&
@@ -134,7 +136,7 @@ export default {
     );
   },
 
-  isElementWithoutContent: (node: HTMLElement): boolean => {
+  isElementWithoutContent: function(node: HTMLElement): boolean {
     return (
       node.nodeType === NODE_TYPE.ELEMENT_NODE &&
       node.textContent.trim().length == 0 &&
@@ -145,13 +147,13 @@ export default {
     );
   },
 
-  isUnlikelyTag:(node: HTMLElement): boolean => {
+  isUnlikelyTag: function(node: HTMLElement): boolean  {
     return node.tagName === "BR" ||
     node.tagName === "SCRIPT" ||
     node.tagName === "STYLE"
   },
 
-  isWithoutContentCandidate: (node: HTMLElement): boolean => {
+  isWithoutContentCandidate: function(node: HTMLElement): boolean {
     return (
       (node.tagName === "DIV" ||
         node.tagName === "SECTION" ||
@@ -166,11 +168,11 @@ export default {
     );
   },
 
-  isDefaultScoreTag: (node: HTMLElement): boolean => {
+  isDefaultScoreTag: function(node: HTMLElement): boolean {
     return DEFAULT_TAGS_TO_SCORE.indexOf(node.tagName) !== -1;
   },
 
-  getInnerText: (node: HTMLElement, normalizeSpaces?:boolean): string => {
+  getInnerText: function(node: HTMLElement, normalizeSpaces?:boolean): string {
     normalizeSpaces = (typeof normalizeSpaces === "undefined") ? true : normalizeSpaces;
     let textContent = node.textContent.trim();
 
@@ -180,7 +182,7 @@ export default {
     return textContent;
   },
 
-  getLinkDensity: (element: HTMLElement): number => {
+  getLinkDensity: function(element: HTMLElement): number {
     let textLength = this.getInnerText(element).length;
     if (textLength === 0) return 0;
 
@@ -194,39 +196,39 @@ export default {
     return linkLength / textLength;
   },
 
-  setScore: (node: HTMLElement, value: string | number): void => {
-    node.dataset["data-antar-score"] = String(value);
+  setScore: function(node: HTMLElement, value: string | number): void {
+    node.dataset[DATA_ATTR] = String(value);
   },
 
-  getScore: (node: HTMLElement): number => {
+  getScore: function(node: HTMLElement): number {
     if (!node) return;
-    const score = node.dataset["data-antar-score"]
+    const score = node.dataset[DATA_ATTR]
     return score ? Number(score): undefined;
   },
 
-  everyNode: (nodeList: HTMLAllCollection, fn: Function): boolean => {
+  everyNode: function(nodeList: HTMLAllCollection, fn: Function): boolean {
     return Array.prototype.every.call(nodeList, fn, this);
   },
 
-  isWhitespace: (node: HTMLElement): boolean => {
+  isWhitespace: function(node: HTMLElement): boolean  {
     return (node.nodeType === this.TEXT_NODE && node.textContent.trim().length === 0) ||
            (node.nodeType === this.ELEMENT_NODE && node.tagName === "BR");
   },
 
-  isPhrasingContent: (node: HTMLElement) => {
+  isPhrasingContent: function(node: HTMLElement): boolean {
     return node.nodeType === NODE_TYPE.TEXT_NODE || PHRASING_ELEMS.indexOf(node.tagName) !== -1 ||
       ((node.tagName === "A" || node.tagName === "DEL" || node.tagName === "INS") &&
         this.everyNode(node.childNodes, this.isPhrasingContent));
   },
 
-  hasChildBlockElement:  (element: HTMLElement): boolean => {
+  hasChildBlockElement: function(element: HTMLElement): boolean  {
     return this.someNode(element.childNodes, (node: HTMLElement) => {
       return DIV_TO_P_ELEMS.indexOf(node.tagName) !== -1 ||
              this.hasChildBlockElement(node);
     });
   },
 
-  getNextNode: (node: HTMLElement, ignoreSelfAndKids: boolean = false): HTMLElement => {
+  getNextNode: function(node: HTMLElement, ignoreSelfAndKids: boolean = false): HTMLElement {
     // First check for kids if those aren't being ignored
     if (!ignoreSelfAndKids && node.firstElementChild) {
       return <HTMLElement> node.firstElementChild;
@@ -244,7 +246,7 @@ export default {
     return node && <HTMLElement> node.nextElementSibling;
   },
 
-  hasSingleTagInsideElement: (element: HTMLElement, tag: string): boolean => {
+  hasSingleTagInsideElement: function(element: HTMLElement, tag: string): boolean {
     // There should be exactly 1 element child with given tag
     if (element.children.length != 1 || element.children[0].tagName !== tag) {
       return false;
@@ -259,7 +261,7 @@ export default {
     });
   },
 
-  getNodeAncestors: (node: HTMLElement, maxDepth: number = 0) => {
+  getNodeAncestors: function(node: HTMLElement, maxDepth: number = 0) {
     let i = 0, ancestors = [];
     while (node.parentNode) {
       ancestors.push(node.parentNode);
@@ -270,7 +272,7 @@ export default {
     return ancestors;
   },
 
-  getClassWeight: (node: HTMLElement) => {
+  getClassWeight: function(node: HTMLElement) {
     let weight = 0;
 
     // Look for a special classname

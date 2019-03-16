@@ -52,7 +52,7 @@ const score = (html: string, doc: Document): string => {
   }
 
   if (!isProbablyReaderable(doc)) {
-    throw new Error("Document is not readerable");
+    return html;
   }
 
   let articleByLine = false;
@@ -104,10 +104,6 @@ const score = (html: string, doc: Document): string => {
     let node = doc.documentElement;
 
     while (node) {
-      let stripUnlikelyCandidates = attemptHandler.isFlagActive(
-        FLags.FLAG_STRIP_UNLIKELYS
-      );
-
       if (utils.getScore(node) === SCORES.EXEMPT_NODE) {
         node = utils.getNextNode(node);
         continue;
@@ -130,13 +126,17 @@ const score = (html: string, doc: Document): string => {
         }
       }
 
-      if (!utils.isUnlikelyCandidate(node, matchString)) {
+      if (utils.isUnlikelyCandidate(node, matchString)) {
         utils.setScore(node, SCORES.EXEMPT_NODE);
         node = utils.getNextNode(node);
         continue;
       }
 
-      if (stripUnlikelyCandidates && !utils.isWithoutContentCandidate(node)) {
+      let stripUnlikelyCandidates = attemptHandler.isFlagActive(
+        FLags.FLAG_STRIP_UNLIKELYS
+      );
+
+      if (stripUnlikelyCandidates && utils.isWithoutContentCandidate(node)) {
         utils.setScore(node, SCORES.EXEMPT_NODE);
         node = utils.getNextNode(node);
         continue;
@@ -278,10 +278,10 @@ const score = (html: string, doc: Document): string => {
       // Move everything (not just elements, also text nodes etc.) into the container
       // so we even include text directly in the body:
       let kids = page.childNodes;
-      while (kids.length) {
-        // this.log("Moving child out:", kids[0]);
-        topCandidate.appendChild(kids[0]);
-      }
+      // while (kids.length) {
+      //   // this.log("Moving child out:", kids[0]);
+      //   // topCandidate.appendChild(kids[0]);
+      // }
 
       utils.setScore(topCandidate, initializeScore(topCandidate));
     } else if (topCandidate) {
@@ -324,7 +324,7 @@ const score = (html: string, doc: Document): string => {
       }
 
       if (!utils.getScore(topCandidate)) {
-        utils.setScore(node, initializeScore(topCandidate));
+        utils.setScore(topCandidate, initializeScore(topCandidate));
       }
 
       // Because of our bonus system, parents of candidates might have scores
@@ -439,7 +439,7 @@ const score = (html: string, doc: Document): string => {
 
       if (append) {
         console.log("Appending node:", sibling);
-        articleContent.appendChild(sibling);
+        articleContent.appendChild(sibling.cloneNode(true));
         // siblings is a reference to the children array, and
         // sibling is removed from the array when we call appendChild().
         // As a result, we must revisit this index since the nodes
