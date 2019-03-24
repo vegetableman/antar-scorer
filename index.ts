@@ -57,7 +57,7 @@ const score = (html: string, doc: Document): string => {
 
   let articleByLine = false;
   let attemptHandler = new FlagAttempts();
-  let page = doc.body;
+  let page = <any>doc.body;
 
   const initializeScore = (node: HTMLElement): number => {
     let score = 0;
@@ -188,7 +188,7 @@ const score = (html: string, doc: Document): string => {
         if (
           !elementToScore.parentNodeRef &&
           (!elementToScore.parentNode ||
-            typeof (<HTMLElement>elementToScore.parentNode).tagName ===
+            typeof (<HTMLElement>utils.getParent(elementToScore)).tagName ===
               "undefined")
         ) {
           return;
@@ -211,8 +211,9 @@ const score = (html: string, doc: Document): string => {
           (ancestor: HTMLElement, level: number): void => {
             if (
               !ancestor.tagName ||
-              !ancestor.parentNode ||
-              typeof (<HTMLElement>ancestor.parentNode).tagName === "undefined"
+              !utils.getParent(ancestor) ||
+              typeof (<HTMLElement>utils.getParent(ancestor)).tagName ===
+                "undefined"
             )
               return;
 
@@ -270,22 +271,26 @@ const score = (html: string, doc: Document): string => {
 
     let topCandidate = topCandidates[0] || null;
     let neededToCreateTopCandidate = false;
-    let parentOfTopCandidate: HTMLElement;
+    let parentOfTopCandidate;
 
     // If we still have no top candidate, just use the body as a last resort.
     // We also have to copy the body node so it is something we can modify.
     if (topCandidate === null || topCandidate.tagName === "BODY") {
       // Move all of the page's children into topCandidate
       topCandidate = doc.createElement("DIV");
-      neededToCreateTopCandidate = true;
+      // neededToCreateTopCandidate = true;
       // Move everything (not just elements, also text nodes etc.) into the container
       // so we even include text directly in the body:
       let kids = page.childNodes;
-      // while (kids.length) {
-      //   // this.log("Moving child out:", kids[0]);
-      //   // topCandidate.appendChild(kids[0]);
-      // }
+      let count = kids.length;
+      let i = 0;
+      while (i < count) {
+        // this.log("Moving child out:", kids[0]);
+        topCandidate.appendChild(kids[i].cloneNode(true));
+        i++;
+      }
 
+      topCandidate.parentNodeRef = page;
       utils.setScore(topCandidate, initializeScore(topCandidate));
     } else if (topCandidate) {
       let alternativeCandidateAncestors = [];
@@ -302,7 +307,7 @@ const score = (html: string, doc: Document): string => {
 
       const MINIMUM_TOPCANDIDATES = 3;
       if (alternativeCandidateAncestors.length >= MINIMUM_TOPCANDIDATES) {
-        parentOfTopCandidate = topCandidate.parentNode;
+        parentOfTopCandidate = utils.getParent(topCandidate);
         while (parentOfTopCandidate.tagName !== "BODY") {
           let listsContainingThisAncestor = 0;
           for (
@@ -322,7 +327,9 @@ const score = (html: string, doc: Document): string => {
             topCandidate = parentOfTopCandidate;
             break;
           }
-          parentOfTopCandidate = <HTMLElement>parentOfTopCandidate.parentNode;
+          parentOfTopCandidate = <HTMLElement>(
+            utils.getParent(parentOfTopCandidate)
+          );
         }
       }
 
@@ -337,12 +344,14 @@ const score = (html: string, doc: Document): string => {
       // lurking in other places that we want to unify in. The sibling stuff
       // below does some of that - but only if we've looked high enough up the DOM
       // tree.
-      parentOfTopCandidate = topCandidate.parentNode;
+      parentOfTopCandidate = utils.getParent(topCandidate);
       let lastScore = utils.getScore(topCandidate);
       let scoreThreshold = lastScore / 3;
       while (parentOfTopCandidate.tagName !== "BODY") {
         if (!utils.getScore(parentOfTopCandidate)) {
-          parentOfTopCandidate = <HTMLElement>parentOfTopCandidate.parentNode;
+          parentOfTopCandidate = <HTMLElement>(
+            utils.getParent(parentOfTopCandidate)
+          );
           continue;
         }
         let parentScore = utils.getScore(parentOfTopCandidate);
@@ -353,18 +362,20 @@ const score = (html: string, doc: Document): string => {
           break;
         }
         lastScore = parentScore;
-        parentOfTopCandidate = <HTMLElement>parentOfTopCandidate.parentNode;
+        parentOfTopCandidate = <HTMLElement>(
+          utils.getParent(parentOfTopCandidate)
+        );
       }
 
       // If the top candidate is the only child, use parent instead. This will help sibling
       // joining logic when adjacent content is actually located in parent's sibling node.
-      parentOfTopCandidate = topCandidate.parentNode;
+      parentOfTopCandidate = utils.getParent(topCandidate);
       while (
         parentOfTopCandidate.tagName != "BODY" &&
         parentOfTopCandidate.children.length == 1
       ) {
         topCandidate = parentOfTopCandidate;
-        parentOfTopCandidate = topCandidate.parentNode;
+        parentOfTopCandidate = utils.getParent(topCandidate);
       }
       if (!utils.getScore(topCandidate)) {
         utils.setScore(topCandidate, initializeScore(topCandidate));
@@ -381,8 +392,9 @@ const score = (html: string, doc: Document): string => {
       utils.getScore(topCandidate) * 0.2
     );
     // Keep potential top candidate's parent node to try to get text direction of it later.
-    parentOfTopCandidate = topCandidate.parentNode;
-    let siblings = parentOfTopCandidate.children;
+    parentOfTopCandidate = utils.getParent(topCandidate);
+
+    let siblings = <HTMLCollection>parentOfTopCandidate.children;
 
     for (var s = 0, sl = siblings.length; s < sl; s++) {
       let sibling = <HTMLElement>siblings[s];

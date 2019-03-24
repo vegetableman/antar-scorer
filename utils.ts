@@ -272,6 +272,10 @@ export default {
     );
   },
 
+  getParent: function(node: HTMLElement | any): HTMLElement {
+    return node.parentNode || node.parentNodeRef;
+  },
+
   isPhrasingContent: function(node: HTMLElement): boolean {
     return (
       node.nodeType === NODE_TYPE.TEXT_NODE ||

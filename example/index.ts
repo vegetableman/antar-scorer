@@ -1,7 +1,9 @@
 import Readability from "./readability";
 import scorer from "../index";
-const result = scorer.score(document.body.innerHTML, document);
-console.log(result);
+try {
+  const result = scorer.score(document.body.innerHTML, document);
+  console.log(result);
+} catch (ex) {}
 
 var documentClone = document.cloneNode(true);
 var article = new Readability(<HTMLDocument>documentClone, {}).parse();
