@@ -442,7 +442,6 @@ const score = (html: string, doc: Document): string => {
 
           if (nodeLength > 80 && linkDensity < 0.25) {
             append = true;
-            utils.setScore(sibling, nodeLength);
           } else if (
             nodeLength < 80 &&
             nodeLength > 0 &&
@@ -450,7 +449,6 @@ const score = (html: string, doc: Document): string => {
             nodeContent.search(/\.( |$)/) !== -1
           ) {
             append = true;
-            utils.setScore(sibling, nodeLength);
           }
         }
       }
