@@ -2,7 +2,7 @@ import utils from "./utils";
 import isProbablyReaderable from "./readerable";
 
 enum Tag {
-  DIV = "div"
+  DIV = "DIV"
 }
 
 enum SCORES {
@@ -152,14 +152,14 @@ const score = (html: string, doc: Document): string => {
         while (childNode) {
           if (utils.isPhrasingContent(<HTMLElement>childNode)) {
             if (p !== null) {
-              utils.setScore(<HTMLElement>childNode, SCORES.PHRASING_NODE);
-              elementsToScore.push(childNode);
+              p.appendChild(childNode.cloneNode(true));
             } else if (!utils.isWhitespace(<HTMLElement>childNode)) {
-              p = {};
-              utils.setScore(<HTMLElement>childNode, SCORES.PHRASING_NODE);
-              elementsToScore.push(childNode);
+              p = document.createElement("p");
+              p.parentNodeRef = childNode.parentNode;
+              p.appendChild(childNode.cloneNode(true));
             }
           } else if (p !== null) {
+            elementsToScore.push(p);
             p = null;
           }
           childNode = <HTMLElement>childNode.nextSibling;
@@ -184,11 +184,12 @@ const score = (html: string, doc: Document): string => {
     let candidates = [];
     utils.forEachNode(
       elementsToScore,
-      (elementToScore: HTMLElement): void => {
+      (elementToScore: any): void => {
         if (
-          !elementToScore.parentNode ||
-          typeof (<HTMLElement>elementToScore.parentNode).tagName ===
-            "undefined"
+          !elementToScore.parentNodeRef &&
+          (!elementToScore.parentNode ||
+            typeof (<HTMLElement>elementToScore.parentNode).tagName ===
+              "undefined")
         ) {
           return;
         }
@@ -236,6 +237,7 @@ const score = (html: string, doc: Document): string => {
             utils.setScore(ancestor, dataScore);
           }
         );
+        elementToScore = null;
       }
     );
 

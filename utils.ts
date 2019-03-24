@@ -24,7 +24,7 @@ enum NODE_TYPE {
   TEXT_NODE = 3
 }
 
-const DATA_ATTR = 'antarScore';
+const DATA_ATTR = "antarScore";
 
 const DEFAULT_TAGS_TO_SCORE = "section,h2,h3,h4,h5,h6,p,td,pre"
   .toUpperCase()
@@ -49,16 +49,62 @@ const REGEXPS = {
   hasContent: /\S$/
 };
 
-const DIV_TO_P_ELEMS = [ "A", "BLOCKQUOTE", "DL", "DIV", "IMG", "OL", "P", "PRE", "TABLE", "UL", "SELECT" ]
+const DIV_TO_P_ELEMS = [
+  "A",
+  "BLOCKQUOTE",
+  "DL",
+  "DIV",
+  "IMG",
+  "OL",
+  "P",
+  "PRE",
+  "TABLE",
+  "UL",
+  "SELECT"
+];
 
 const PHRASING_ELEMS = [
   // "CANVAS", "IFRAME", "SVG", "VIDEO",
-  "ABBR", "AUDIO", "B", "BDO", "BR", "BUTTON", "CITE", "CODE", "DATA",
-  "DATALIST", "DFN", "EM", "EMBED", "I", "IMG", "INPUT", "KBD", "LABEL",
-  "MARK", "MATH", "METER", "NOSCRIPT", "OBJECT", "OUTPUT", "PROGRESS", "Q",
-  "RUBY", "SAMP", "SCRIPT", "SELECT", "SMALL", "SPAN", "STRONG", "SUB",
-  "SUP", "TEXTAREA", "TIME", "VAR", "WBR"
-]
+  "ABBR",
+  "AUDIO",
+  "B",
+  "BDO",
+  "BR",
+  "BUTTON",
+  "CITE",
+  "CODE",
+  "DATA",
+  "DATALIST",
+  "DFN",
+  "EM",
+  "EMBED",
+  "I",
+  "IMG",
+  "INPUT",
+  "KBD",
+  "LABEL",
+  "MARK",
+  "MATH",
+  "METER",
+  "NOSCRIPT",
+  "OBJECT",
+  "OUTPUT",
+  "PROGRESS",
+  "Q",
+  "RUBY",
+  "SAMP",
+  "SCRIPT",
+  "SELECT",
+  "SMALL",
+  "SPAN",
+  "STRONG",
+  "SUB",
+  "SUP",
+  "TEXTAREA",
+  "TIME",
+  "VAR",
+  "WBR"
+];
 
 export default {
   isProbablyVisible: function(node: HTMLElement): boolean {
@@ -126,7 +172,10 @@ export default {
     return false;
   },
 
-  isUnlikelyCandidate: function(node: HTMLElement, matchString: string): boolean {
+  isUnlikelyCandidate: function(
+    node: HTMLElement,
+    matchString: string
+  ): boolean {
     return (
       REGEXPS.unlikelyCandidates.test(matchString) &&
       !REGEXPS.okMaybeItsACandidate.test(matchString) &&
@@ -147,10 +196,12 @@ export default {
     );
   },
 
-  isUnlikelyTag: function(node: HTMLElement): boolean  {
-    return node.tagName === "BR" ||
-    node.tagName === "SCRIPT" ||
-    node.tagName === "STYLE"
+  isUnlikelyTag: function(node: HTMLElement): boolean {
+    return (
+      node.tagName === "BR" ||
+      node.tagName === "SCRIPT" ||
+      node.tagName === "STYLE"
+    );
   },
 
   isWithoutContentCandidate: function(node: HTMLElement): boolean {
@@ -172,8 +223,9 @@ export default {
     return DEFAULT_TAGS_TO_SCORE.indexOf(node.tagName) !== -1;
   },
 
-  getInnerText: function(node: HTMLElement, normalizeSpaces?:boolean): string {
-    normalizeSpaces = (typeof normalizeSpaces === "undefined") ? true : normalizeSpaces;
+  getInnerText: function(node: HTMLElement, normalizeSpaces?: boolean): string {
+    normalizeSpaces =
+      typeof normalizeSpaces === "undefined" ? true : normalizeSpaces;
     let textContent = node.textContent.trim();
 
     if (normalizeSpaces) {
@@ -189,7 +241,9 @@ export default {
     let linkLength = 0;
 
     // XXX implement _reduceNodeList?
-    this.forEachNode(element.getElementsByTagName("a"), function(linkNode: ) {
+    this.forEachNode(element.getElementsByTagName("a"), function(
+      linkNode: HTMLElement
+    ) {
       linkLength += this.getInnerText(linkNode).length;
     });
 
@@ -202,40 +256,53 @@ export default {
 
   getScore: function(node: HTMLElement): number {
     if (!node) return;
-    const score = node.dataset[DATA_ATTR]
-    return score ? Number(score): undefined;
+    const score = node.dataset[DATA_ATTR];
+    return score ? Number(score) : undefined;
   },
 
   everyNode: function(nodeList: HTMLAllCollection, fn: Function): boolean {
     return Array.prototype.every.call(nodeList, fn, this);
   },
 
-  isWhitespace: function(node: HTMLElement): boolean  {
-    return (node.nodeType === this.TEXT_NODE && node.textContent.trim().length === 0) ||
-           (node.nodeType === this.ELEMENT_NODE && node.tagName === "BR");
+  isWhitespace: function(node: HTMLElement): boolean {
+    return (
+      (node.nodeType === NODE_TYPE.TEXT_NODE &&
+        node.textContent.trim().length === 0) ||
+      (node.nodeType === NODE_TYPE.ELEMENT_NODE && node.tagName === "BR")
+    );
   },
 
   isPhrasingContent: function(node: HTMLElement): boolean {
-    return node.nodeType === NODE_TYPE.TEXT_NODE || PHRASING_ELEMS.indexOf(node.tagName) !== -1 ||
-      ((node.tagName === "A" || node.tagName === "DEL" || node.tagName === "INS") &&
-        this.everyNode(node.childNodes, this.isPhrasingContent));
+    return (
+      node.nodeType === NODE_TYPE.TEXT_NODE ||
+      PHRASING_ELEMS.indexOf(node.tagName) !== -1 ||
+      ((node.tagName === "A" ||
+        node.tagName === "DEL" ||
+        node.tagName === "INS") &&
+        this.everyNode(node.childNodes, this.isPhrasingContent))
+    );
   },
 
-  hasChildBlockElement: function(element: HTMLElement): boolean  {
+  hasChildBlockElement: function(element: HTMLElement): boolean {
     return this.someNode(element.childNodes, (node: HTMLElement) => {
-      return DIV_TO_P_ELEMS.indexOf(node.tagName) !== -1 ||
-             this.hasChildBlockElement(node);
+      return (
+        DIV_TO_P_ELEMS.indexOf(node.tagName) !== -1 ||
+        this.hasChildBlockElement(node)
+      );
     });
   },
 
-  getNextNode: function(node: HTMLElement, ignoreSelfAndKids: boolean = false): HTMLElement {
+  getNextNode: function(
+    node: HTMLElement,
+    ignoreSelfAndKids: boolean = false
+  ): HTMLElement {
     // First check for kids if those aren't being ignored
     if (!ignoreSelfAndKids && node.firstElementChild) {
-      return <HTMLElement> node.firstElementChild;
+      return <HTMLElement>node.firstElementChild;
     }
     // Then for siblings...
     if (node.nextElementSibling) {
-      return <HTMLElement> node.nextElementSibling;
+      return <HTMLElement>node.nextElementSibling;
     }
     // And finally, move up the parent chain *and* find a sibling
     // (because this is depth-first traversal, we will have already
@@ -243,12 +310,15 @@ export default {
     do {
       node = <HTMLElement>node.parentNode;
     } while (node && !node.nextElementSibling);
-    return node && <HTMLElement> node.nextElementSibling;
+    return node && <HTMLElement>node.nextElementSibling;
   },
 
-  hasSingleTagInsideElement: function(element: HTMLElement, tag: string): boolean {
+  hasSingleTagInsideElement: function(
+    element: HTMLElement,
+    tag: string
+  ): boolean {
     // There should be exactly 1 element child with given tag
-    if (element.children.length != 1 || element.children[0].tagName !== tag) {
+    if (element.children.length !== 1 || element.children[0].tagName !== tag) {
       return false;
     }
 
@@ -261,13 +331,13 @@ export default {
     });
   },
 
-  getNodeAncestors: function(node: HTMLElement, maxDepth: number = 0) {
-    let i = 0, ancestors = [];
-    while (node.parentNode) {
-      ancestors.push(node.parentNode);
-      if (maxDepth && ++i === maxDepth)
-        break;
-      node = <HTMLElement>node.parentNode;
+  getNodeAncestors: function(node: HTMLElement | any, maxDepth: number = 0) {
+    let i = 0,
+      ancestors = [];
+    while (node.parentNode || node.parentNodeRef) {
+      ancestors.push(node.parentNode || node.parentNodeRef);
+      if (maxDepth && ++i === maxDepth) break;
+      node = <HTMLElement>(node.parentNode || node.parentNodeRef);
     }
     return ancestors;
   },
@@ -276,21 +346,17 @@ export default {
     let weight = 0;
 
     // Look for a special classname
-    if (typeof(node.className) === "string" && node.className !== "") {
-      if (REGEXPS.negative.test(node.className))
-        weight -= 25;
+    if (typeof node.className === "string" && node.className !== "") {
+      if (REGEXPS.negative.test(node.className)) weight -= 25;
 
-      if (REGEXPS.positive.test(node.className))
-        weight += 25;
+      if (REGEXPS.positive.test(node.className)) weight += 25;
     }
 
     // Look for a special ID
-    if (typeof(node.id) === "string" && node.id !== "") {
-      if (REGEXPS.negative.test(node.id))
-        weight -= 25;
+    if (typeof node.id === "string" && node.id !== "") {
+      if (REGEXPS.negative.test(node.id)) weight -= 25;
 
-      if (REGEXPS.positive.test(node.id))
-        weight += 25;
+      if (REGEXPS.positive.test(node.id)) weight += 25;
     }
 
     return weight;
