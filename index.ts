@@ -148,6 +148,7 @@ const score = (html: string, doc: Document): string => {
 
       if (node.tagName === Tag.DIV) {
         let p = null;
+        let pList = [];
         let childNode = node.firstChild;
         while (childNode) {
           if (utils.isPhrasingContent(<HTMLElement>childNode)) {
@@ -159,7 +160,7 @@ const score = (html: string, doc: Document): string => {
               p.appendChild(childNode.cloneNode(true));
             }
           } else if (p !== null) {
-            elementsToScore.push(p);
+            pList.push(p);
             p = null;
           }
           childNode = <HTMLElement>childNode.nextSibling;
@@ -169,14 +170,18 @@ const score = (html: string, doc: Document): string => {
         // element. DIVs with only a P element inside and no text content can be
         // safely converted into plain P elements to avoid confusing the scoring
         // algorithm with DIVs with are, in practice, paragraphs.
-        if (
+        if (pList.length === 1 && utils.getLinkDensity(node) < 0.25) {
+          elementsToScore.push(pList[0]);
+        } else if (
           utils.hasSingleTagInsideElement(node, "P") &&
           utils.getLinkDensity(node) < 0.25
         ) {
           elementsToScore.push(node.children[0]);
-        } else if (!utils.hasChildBlockElement(node)) {
+        } else if (!utils.hasChildBlockElement(node) && !pList.length) {
           elementsToScore.push(node);
         }
+
+        pList = null;
       }
       node = utils.getNextNode(node);
     }
@@ -407,13 +412,11 @@ const score = (html: string, doc: Document): string => {
       console.log(
         "Looking at sibling node:",
         sibling,
-        utils.getScore(sibling)
-          ? "with score " + utils.getScore(topCandidate)
-          : ""
+        utils.getScore(sibling) ? "with score " + utils.getScore(sibling) : ""
       );
       console.log(
         "Sibling has score",
-        utils.getScore(sibling) ? utils.getScore(topCandidate) : "Unknown"
+        utils.getScore(sibling) ? utils.getScore(sibling) : "Unknown"
       );
 
       if (sibling === topCandidate) {

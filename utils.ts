@@ -46,7 +46,8 @@ const REGEXPS = {
   nextLink: /(next|weiter|continue|>([^\|]|$)|»([^\|]|$))/i,
   prevLink: /(prev|earl|old|new|<|«)/i,
   whitespace: /^\s*$/,
-  hasContent: /\S$/
+  hasContent: /\S$/,
+  unlikelyTags: /script|noscript|select|br|style|fieldset|form|footer|aside|link|h1|embed|object|svg|iframe|input|textarea|button|img/
 };
 
 const DIV_TO_P_ELEMS = [
@@ -197,11 +198,7 @@ export default {
   },
 
   isUnlikelyTag: function(node: HTMLElement): boolean {
-    return (
-      node.tagName === "BR" ||
-      node.tagName === "SCRIPT" ||
-      node.tagName === "STYLE"
-    );
+    return REGEXPS.unlikelyTags.test(node.tagName.toLowerCase());
   },
 
   isWithoutContentCandidate: function(node: HTMLElement): boolean {
