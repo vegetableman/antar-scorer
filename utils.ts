@@ -152,6 +152,14 @@ export default {
     Array.prototype.forEach.call(nodeList, fn, this);
   },
 
+  isWhitespace: function(node: HTMLElement) {
+    return (
+      (node.nodeType === this.TEXT_NODE &&
+        node.textContent.trim().length === 0) ||
+      (node.nodeType === this.ELEMENT_NODE && node.tagName === "BR")
+    );
+  },
+
   hasAncestorTag: function(
     node: HTMLElement,
     tagName: string,
@@ -234,6 +242,23 @@ export default {
       return textContent.replace(REGEXPS.normalize, " ");
     }
     return textContent;
+  },
+
+  withoutNodes: function(
+    nodeList: HTMLAllCollection,
+    score: number
+  ): Array<HTMLElement> {
+    return Array.prototype.filter.call(
+      nodeList,
+      (node: HTMLElement) => {
+        return (
+          !node.dataset ||
+          !node.dataset[DATA_ATTR] ||
+          (node.dataset[DATA_ATTR] && node.dataset[DATA_ATTR] !== `${score}`)
+        );
+      },
+      this
+    );
   },
 
   getLinkDensity: function(element: HTMLElement): number {

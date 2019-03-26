@@ -188,6 +188,9 @@ const score = (html: string, doc: Document): string => {
               childNode.phrasingParent = p;
             }
           } else if (p !== null) {
+            while (p.lastChild && utils.isWhitespace(p.lastChild)) {
+              p.removeChild(p.lastChild);
+            }
             pList.push(p);
             p = null;
           }
@@ -227,7 +230,16 @@ const score = (html: string, doc: Document): string => {
           return;
         }
 
-        let innerText = utils.getInnerText(elementToScore);
+        let wrapper = doc.createElement("p");
+        utils.forEachNode(
+          utils.withoutNodes(elementToScore.childNodes, SCORES.EXEMPT_NODE),
+          (node: HTMLElement) => {
+            wrapper.appendChild(node.cloneNode(true));
+          }
+        );
+        let innerText = utils.getInnerText(
+          wrapper.childElementCount ? wrapper : elementToScore
+        );
         if (innerText.length < 25) return;
 
         // Exclude nodes with no ancestor.
