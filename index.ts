@@ -13,20 +13,20 @@ enum SCORES {
 enum FLags {
   FLAG_STRIP_UNLIKELYS = 0x1,
   FLAG_WEIGHT_CLASSES = 0x2,
-  FLAG_CLEAN_CONDITIONALLY = 0x4
+  FLAG_STRIP_CONDITIONALLY = 0x4
 }
 
 class FlagAttempts {
   FLAG_STRIP_UNLIKELYS: number = FLags.FLAG_STRIP_UNLIKELYS;
   FLAG_WEIGHT_CLASSES: number = FLags.FLAG_WEIGHT_CLASSES;
-  FLAG_CLEAN_CONDITIONALLY: number = FLags.FLAG_CLEAN_CONDITIONALLY;
+  FLAG_STRIP_CONDITIONALLY: number = FLags.FLAG_STRIP_CONDITIONALLY;
 
   attempts: Array<{ articleContent: HTMLElement; textLength: number }> = [];
 
   flags =
     this.FLAG_STRIP_UNLIKELYS |
     this.FLAG_WEIGHT_CLASSES |
-    this.FLAG_CLEAN_CONDITIONALLY;
+    this.FLAG_STRIP_CONDITIONALLY;
 
   removeFlag(flag: number) {
     this.flags = this.flags & ~flag;
@@ -511,8 +511,8 @@ const score = (html: string, doc: Document): string => {
         attemptHandler.removeFlag(FLags.FLAG_STRIP_UNLIKELYS);
       } else if (attemptHandler.isFlagActive(FLags.FLAG_WEIGHT_CLASSES)) {
         attemptHandler.removeFlag(FLags.FLAG_WEIGHT_CLASSES);
-      } else if (attemptHandler.isFlagActive(FLags.FLAG_CLEAN_CONDITIONALLY)) {
-        attemptHandler.removeFlag(FLags.FLAG_CLEAN_CONDITIONALLY);
+      } else if (attemptHandler.isFlagActive(FLags.FLAG_STRIP_CONDITIONALLY)) {
+        attemptHandler.removeFlag(FLags.FLAG_STRIP_CONDITIONALLY);
       } else {
         // No luck after removing flags, just return the longest text we found during the different loops
         attemptHandler.attempts.sort((a, b) => {
