@@ -47,7 +47,8 @@ const REGEXPS = {
   prevLink: /(prev|earl|old|new|<|«)/i,
   whitespace: /^\s*$/,
   hasContent: /\S$/,
-  unlikelyTags: /script|noscript|select|br|style|fieldset|form|footer|aside|link|h1|embed|object|svg|iframe|input|textarea|button|img/
+  unlikelyTags: /script|noscript|select|br|style|footer|aside|link|h1|embed|object|svg|iframe|input|textarea|button|img/,
+  conditionalTags: /fieldset|form|table|ul/
 };
 
 const DIV_TO_P_ELEMS = [
@@ -201,6 +202,10 @@ export default {
     return REGEXPS.unlikelyTags.test(node.tagName.toLowerCase());
   },
 
+  isUnlikelyConditionalTag: function(node: HTMLElement): boolean {
+    return REGEXPS.conditionalTags.test(node.tagName.toLowerCase());
+  },
+
   isWithoutContentCandidate: function(node: HTMLElement): boolean {
     return (
       (node.tagName === "DIV" ||
@@ -255,6 +260,12 @@ export default {
     if (!node) return;
     const score = node.dataset[DATA_ATTR];
     return score ? Number(score) : undefined;
+  },
+
+  removeScore: function(node: HTMLElement): void {
+    if (!!node.dataset[DATA_ATTR]) {
+      delete node.dataset[DATA_ATTR];
+    }
   },
 
   everyNode: function(nodeList: HTMLAllCollection, fn: Function): boolean {

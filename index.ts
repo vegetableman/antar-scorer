@@ -99,9 +99,18 @@ const score = (html: string, doc: Document): string => {
     return score;
   };
 
+  let elementsToScore = [];
+
   while (true) {
-    let elementsToScore = [];
-    let node = doc.documentElement;
+    elementsToScore = [];
+    let node = <any>doc.documentElement;
+    let stripOtherCandidates = attemptHandler.isFlagActive(
+      FLags.FLAG_STRIP_CONDITIONALLY
+    );
+    let stripUnlikelyCandidates = attemptHandler.isFlagActive(
+      FLags.FLAG_STRIP_UNLIKELYS
+    );
+
 
     while (node) {
       if (utils.getScore(node) === SCORES.EXEMPT_NODE) {
@@ -113,6 +122,17 @@ const score = (html: string, doc: Document): string => {
         utils.setScore(node, SCORES.EXEMPT_NODE);
         node = utils.getNextNode(node);
         continue;
+      }
+
+      if (stripOtherCandidates && utils.isUnlikelyConditionalTag(node)) {
+        utils.setScore(node, SCORES.EXEMPT_NODE);
+        node = utils.getNextNode(node);
+        continue;
+      } else if (
+        !stripOtherCandidates &&
+        utils.isUnlikelyConditionalTag(node)
+      ) {
+        utils.removeScore(node);
       }
 
       let matchString = node.className + " " + node.id;
@@ -132,32 +152,40 @@ const score = (html: string, doc: Document): string => {
         continue;
       }
 
-      let stripUnlikelyCandidates = attemptHandler.isFlagActive(
-        FLags.FLAG_STRIP_UNLIKELYS
-      );
-
       if (stripUnlikelyCandidates && utils.isWithoutContentCandidate(node)) {
         utils.setScore(node, SCORES.EXEMPT_NODE);
         node = utils.getNextNode(node);
         continue;
+      } else if (
+        !stripUnlikelyCandidates &&
+        utils.isWithoutContentCandidate(node)
+      ) {
+        utils.removeScore(node);
       }
 
-      if (utils.isDefaultScoreTag(node)) {
+      if (node.phrasingParent && utils.isDefaultScoreTag(node.phrasingParent)) {
+        if (!elementsToScore.includes(node.phrasingParent)) {
+          elementsToScore.push(node.phrasingParent);
+        }
+        delete node.phrasingParent;
+      } else if (utils.isDefaultScoreTag(node)) {
         elementsToScore.push(node);
       }
 
       if (node.tagName === Tag.DIV) {
         let p = null;
         let pList = [];
-        let childNode = node.firstChild;
+        let childNode = <any>node.firstChild;
         while (childNode) {
           if (utils.isPhrasingContent(<HTMLElement>childNode)) {
             if (p !== null) {
               p.appendChild(childNode.cloneNode(true));
+              childNode.phrasingParent = p;
             } else if (!utils.isWhitespace(<HTMLElement>childNode)) {
               p = document.createElement("p");
               p.parentNodeRef = childNode.parentNode;
               p.appendChild(childNode.cloneNode(true));
+              childNode.phrasingParent = p;
             }
           } else if (p !== null) {
             pList.push(p);
@@ -503,6 +531,13 @@ const score = (html: string, doc: Document): string => {
 
     if (parseSuccessful) {
       return articleContent.innerHTML;
+    } else if (elementsToScore.length) {
+      const scoredNodes = [].slice.call(
+        document.querySelectorAll("[data-antar-score]")
+      );
+      utils.forEachNode(scoredNodes, (node: HTMLElement) => {
+        utils.removeScore(node);
+      });
     }
   }
 };
