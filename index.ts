@@ -111,22 +111,21 @@ const score = (html: string, doc: Document): string => {
       FLags.FLAG_STRIP_UNLIKELYS
     );
 
-
     while (node) {
       if (utils.getScore(node) === SCORES.EXEMPT_NODE) {
-        node = utils.getNextNode(node);
+        node = utils.getNextNode(node, true);
         continue;
       }
 
       if (!utils.isProbablyVisible(node) || utils.isUnlikelyTag(node)) {
-        utils.setScore(node, SCORES.EXEMPT_NODE);
-        node = utils.getNextNode(node);
+        utils.setScore(node, SCORES.EXEMPT_NODE, true);
+        node = utils.getNextNode(node, true);
         continue;
       }
 
       if (stripOtherCandidates && utils.isUnlikelyConditionalTag(node)) {
-        utils.setScore(node, SCORES.EXEMPT_NODE);
-        node = utils.getNextNode(node);
+        utils.setScore(node, SCORES.EXEMPT_NODE, true);
+        node = utils.getNextNode(node, true);
         continue;
       } else if (
         !stripOtherCandidates &&
@@ -140,20 +139,20 @@ const score = (html: string, doc: Document): string => {
       if (!articleByLine) {
         articleByLine = utils.checkByline(node, matchString);
         if (articleByLine) {
-          utils.setScore(node, SCORES.EXEMPT_NODE);
-          node = utils.getNextNode(node);
+          utils.setScore(node, SCORES.EXEMPT_NODE, true);
+          node = utils.getNextNode(node, true);
           continue;
         }
       }
 
       if (utils.isUnlikelyCandidate(node, matchString)) {
-        utils.setScore(node, SCORES.EXEMPT_NODE);
-        node = utils.getNextNode(node);
+        utils.setScore(node, SCORES.EXEMPT_NODE, true);
+        node = utils.getNextNode(node, true);
         continue;
       }
 
       if (stripUnlikelyCandidates && utils.isWithoutContentCandidate(node)) {
-        utils.setScore(node, SCORES.EXEMPT_NODE);
+        utils.setScore(node, SCORES.EXEMPT_NODE, true);
         node = utils.getNextNode(node);
         continue;
       } else if (
@@ -545,10 +544,12 @@ const score = (html: string, doc: Document): string => {
       return articleContent.innerHTML;
     } else if (elementsToScore.length) {
       const scoredNodes = [].slice.call(
-        document.querySelectorAll("[data-antar-score]")
+        doc.querySelectorAll("[data-antar-score]")
       );
       utils.forEachNode(scoredNodes, (node: HTMLElement) => {
-        utils.removeScore(node);
+        if (node.tagName !== "BODY" && node.tagName !== "HTML") {
+          utils.removeScore(node);
+        }
       });
     }
   }

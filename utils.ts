@@ -47,7 +47,7 @@ const REGEXPS = {
   prevLink: /(prev|earl|old|new|<|«)/i,
   whitespace: /^\s*$/,
   hasContent: /\S$/,
-  unlikelyTags: /script|noscript|select|br|style|footer|aside|link|h1|embed|object|svg|iframe|input|textarea|button|img/,
+  unlikelyTags: /script|noscript|br|style|footer|aside|link|embed|object|svg|iframe|input|textarea|button|img/,
   conditionalTags: /fieldset|form|table|ul/
 };
 
@@ -152,14 +152,6 @@ export default {
     Array.prototype.forEach.call(nodeList, fn, this);
   },
 
-  isWhitespace: function(node: HTMLElement) {
-    return (
-      (node.nodeType === this.TEXT_NODE &&
-        node.textContent.trim().length === 0) ||
-      (node.nodeType === this.ELEMENT_NODE && node.tagName === "BR")
-    );
-  },
-
   hasAncestorTag: function(
     node: HTMLElement,
     tagName: string,
@@ -233,10 +225,40 @@ export default {
     return DEFAULT_TAGS_TO_SCORE.indexOf(node.tagName) !== -1;
   },
 
-  getInnerText: function(node: HTMLElement, normalizeSpaces?: boolean): string {
+  textContent: function(node: HTMLElement): string {
+    const walk = (n: any): Array => {
+      let a = [];
+      if (!n) {
+        return a;
+      }
+      if (n.nodeType !== 3) {
+        if (this.getScore(n) === -9999) {
+          walk(n.nextElementSibling);
+        } else if (n.childNodes) {
+          for (let i = 0; i < n.childNodes.length; ++i) {
+            a = a.concat(walk(n.childNodes[i]));
+          }
+        }
+      } else {
+        a.push(n.data);
+      }
+      return a;
+    };
+
+    return walk(node).join("");
+  },
+
+  getInnerText: function(
+    node: HTMLElement,
+    normalizeSpaces?: boolean,
+    excludeExempt?: boolean
+  ): string {
     normalizeSpaces =
       typeof normalizeSpaces === "undefined" ? true : normalizeSpaces;
-    let textContent = node.textContent.trim();
+    let textContent = (excludeExempt
+      ? this.textContent(node)
+      : node.textContent
+    ).trim();
 
     if (normalizeSpaces) {
       return textContent.replace(REGEXPS.normalize, " ");
@@ -261,28 +283,50 @@ export default {
     );
   },
 
+  getElementsByTagName: function(node: HTMLElement, tagName: string) {
+    const tags = Array.from(node.getElementsByTagName(tagName) || []);
+    return tags.filter((tag: HTMLElement) => {
+      return (
+        !tag.dataset ||
+        !tag.dataset[DATA_ATTR] ||
+        tag.dataset[DATA_ATTR] !== "-9999"
+      );
+    });
+  },
+
   getLinkDensity: function(element: HTMLElement): number {
-    let textLength = this.getInnerText(element).length;
+    let textLength = this.getInnerText(element, true, true).length;
     if (textLength === 0) return 0;
 
     let linkLength = 0;
 
     // XXX implement _reduceNodeList?
-    this.forEachNode(element.getElementsByTagName("a"), function(
+    this.forEachNode(this.getElementsByTagName(element, "a"), function(
       linkNode: HTMLElement
     ) {
-      linkLength += this.getInnerText(linkNode).length;
+      linkLength += this.getInnerText(linkNode, true, true).length;
     });
 
     return linkLength / textLength;
   },
 
-  setScore: function(node: HTMLElement, value: string | number): void {
+  setScore: function(
+    node: HTMLElement,
+    value: string | number,
+    toChildren: boolean
+  ): void {
     node.dataset[DATA_ATTR] = String(value);
+    if (toChildren) {
+      Array.from(node.children).forEach(function(childNode: HTMLElement) {
+        if (childNode.nodeType !== 3) {
+          childNode.dataset[DATA_ATTR] = String(value);
+        }
+      });
+    }
   },
 
   getScore: function(node: HTMLElement): number {
-    if (!node) return;
+    if (!node || !node.dataset) return;
     const score = node.dataset[DATA_ATTR];
     return score ? Number(score) : undefined;
   },
@@ -291,6 +335,11 @@ export default {
     if (!!node.dataset[DATA_ATTR]) {
       delete node.dataset[DATA_ATTR];
     }
+    Array.from(node.children).forEach(function(childNode: HTMLElement) {
+      if (childNode.nodeType !== 3) {
+        delete childNode.dataset[DATA_ATTR];
+      }
+    });
   },
 
   everyNode: function(nodeList: HTMLAllCollection, fn: Function): boolean {
