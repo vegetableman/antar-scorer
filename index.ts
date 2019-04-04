@@ -57,7 +57,7 @@ const score = (html: string, doc: Document): string => {
 
   let articleByLine = false;
   let attemptHandler = new FlagAttempts();
-  let page = <any>doc.body;
+  let page = doc.body;
 
   const initializeScore = (node: HTMLElement): number => {
     let score = 0;
@@ -448,16 +448,6 @@ const score = (html: string, doc: Document): string => {
 
       let append = false;
 
-      console.log(
-        "Looking at sibling node:",
-        sibling,
-        utils.getScore(sibling) ? "with score " + utils.getScore(sibling) : ""
-      );
-      console.log(
-        "Sibling has score",
-        utils.getScore(sibling) ? utils.getScore(sibling) : "Unknown"
-      );
-
       if (sibling === topCandidate) {
         append = true;
       } else {
@@ -496,7 +486,6 @@ const score = (html: string, doc: Document): string => {
       }
 
       if (append) {
-        console.log("Appending node:", sibling);
         articleContent.appendChild(sibling.cloneNode(true));
         // siblings is a reference to the children array, and
         // sibling is removed from the array when we call appendChild().

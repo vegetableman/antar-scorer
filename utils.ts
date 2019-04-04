@@ -313,7 +313,7 @@ export default {
   setScore: function(
     node: HTMLElement,
     value: string | number,
-    toChildren: boolean
+    toChildren?: boolean
   ): void {
     node.dataset[DATA_ATTR] = String(value);
     if (toChildren) {
