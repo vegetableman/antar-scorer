@@ -343,7 +343,7 @@ export default {
   },
 
   removeAllScore: function(node: HTMLElement | Document): void {
-    node.querySelectorAll("data-antar-score").forEach((node: HTMLElement) => {
+    node.querySelectorAll("[data-antar-score]").forEach((node: HTMLElement) => {
       delete node.dataset[DATA_ATTR];
     });
   },
