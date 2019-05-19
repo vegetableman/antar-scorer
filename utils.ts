@@ -342,6 +342,12 @@ export default {
     });
   },
 
+  removeAllScore: function(node: HTMLElement | Document): void {
+    node.querySelectorAll("data-antar-score").forEach((node: HTMLElement) => {
+      delete node.dataset[DATA_ATTR];
+    });
+  },
+
   everyNode: function(nodeList: HTMLAllCollection, fn: Function): boolean {
     return Array.prototype.every.call(nodeList, fn, this);
   },

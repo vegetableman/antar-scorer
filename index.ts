@@ -314,7 +314,7 @@ const score = (html: string, doc: Document): string => {
     }
 
     let topCandidate = topCandidates[0] || null;
-    let neededToCreateTopCandidate = false;
+    // let neededToCreateTopCandidate = false;
     let parentOfTopCandidate;
 
     // If we still have no top candidate, just use the body as a last resort.
@@ -544,4 +544,8 @@ const score = (html: string, doc: Document): string => {
   }
 };
 
-export default { score };
+const descore = (doc: Document) => {
+  utils.removeAllScore(doc);
+};
+
+export default { score, descore };
